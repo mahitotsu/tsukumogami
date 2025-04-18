@@ -5,6 +5,9 @@
         },
         {
             "path": "tsukumogami-aws"
+        },
+        {
+            "path": "tsukumogami-web"
         }
     ]
 }
