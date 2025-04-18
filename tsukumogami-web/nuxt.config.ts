@@ -5,7 +5,6 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui', '@nuxt/icon'],
   nitro: {
     preset: 'aws_lambda',
-    serveStatic: true,
-    compressPublicAssets: true,
+    serveStatic: false,
   },
 })
