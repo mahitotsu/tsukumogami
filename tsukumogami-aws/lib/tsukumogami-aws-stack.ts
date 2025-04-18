@@ -55,11 +55,12 @@ export class TsukumogamiAwsStack extends Stack {
 
         // webapp endponts
         const webappBehavior = {
-            origin: FunctionUrlOrigin.withOriginAccessControl(webapp.addFunctionUrl({
-                authType: FunctionUrlAuthType.AWS_IAM,
+            origin: new FunctionUrlOrigin(webapp.addFunctionUrl({
+                authType: FunctionUrlAuthType.NONE,
                 invokeMode: InvokeMode.BUFFERED,
             })),
             allowedMethods: AllowedMethods.ALLOW_ALL,
+            cachePolicy: CachePolicy.CACHING_DISABLED,
         } as BehaviorOptions;
         const s3BucketBehavior = {
             origin: S3BucketOrigin.withOriginAccessControl(contents, { originPath: '', },),
@@ -67,7 +68,7 @@ export class TsukumogamiAwsStack extends Stack {
             cachePolicy: CachePolicy.CACHING_DISABLED,
         } as BehaviorOptions;
 
-        const destination = new Distribution(this, 'WebappDistribution', {
+        const distributinon = new Distribution(this, 'WebappDistribution', {
             defaultBehavior: webappBehavior,
             additionalBehaviors: {
                 '/_nuxt/**': s3BucketBehavior,
@@ -78,6 +79,6 @@ export class TsukumogamiAwsStack extends Stack {
         });
 
         // print access url
-        new CfnOutput(this, 'ApiEndpoint', { value: `https://${destination.distributionDomainName}`, });
+        new CfnOutput(this, 'ApiEndpoint', { value: `https://${distributinon.domainName}`, });
     }
 }
