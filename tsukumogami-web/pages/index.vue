@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useApiClient } from '~/components/useApiClient';
 
 const prompt = ref('');
 const answer = ref('');
 
 const send = async () => {
-    const data = await $fetch('/api/my-agent', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: { prompt: prompt.value }
-    });
-    answer.value = data;
+    answer.value = await useApiClient().post('/api/my-agent', JSON.stringify({ prompt: prompt.value }));
 }
 </script>
 <template>

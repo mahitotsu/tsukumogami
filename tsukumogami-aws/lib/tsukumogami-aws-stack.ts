@@ -55,8 +55,8 @@ export class TsukumogamiAwsStack extends Stack {
 
         // webapp endponts
         const webappBehavior = {
-            origin: new FunctionUrlOrigin(webapp.addFunctionUrl({
-                authType: FunctionUrlAuthType.NONE,
+            origin: FunctionUrlOrigin.withOriginAccessControl(webapp.addFunctionUrl({
+                authType: FunctionUrlAuthType.AWS_IAM,
                 invokeMode: InvokeMode.BUFFERED,
             })),
             allowedMethods: AllowedMethods.ALLOW_ALL,
