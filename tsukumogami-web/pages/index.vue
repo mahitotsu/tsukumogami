@@ -13,5 +13,6 @@ const send = async () => {
     <h1>TSUKUMOGAMI</h1>
     <input type="text" v-model="prompt" placeholder="Enter new prompt" />
     <button @click="send">send</button>
+    <h3>&nbsp;</h3>
     <div>{{ answer }}</div>
 </template>

@@ -3,8 +3,7 @@ import { FoundationModel, FoundationModelIdentifier } from "aws-cdk-lib/aws-bedr
 import { AllowedMethods, BehaviorOptions, CachePolicy, Distribution } from "aws-cdk-lib/aws-cloudfront";
 import { FunctionUrlOrigin, S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
-import { FunctionUrlAuthType, InvokeMode } from "aws-cdk-lib/aws-lambda";
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import { DockerImageCode, DockerImageFunction, FunctionUrlAuthType, InvokeMode } from "aws-cdk-lib/aws-lambda";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
@@ -22,20 +21,25 @@ export class TsukumogamiAwsStack extends Stack {
             removalPolicy: RemovalPolicy.DESTROY,
             autoDeleteObjects: true,
         });
-        new BucketDeployment(this, 'WebappContentsDeployment', {
+        new BucketDeployment(contents, 'Deployment', {
             destinationBucket: contents,
             destinationKeyPrefix: '',
             sources: [Source.asset(`${__dirname}/../../tsukumogami-web/.output/public`)],
             memoryLimit: 4096,
             retainOnDelete: false,
+            logGroup: new LogGroup(contents, 'DeploymentLogGroup', {
+                retention: RetentionDays.ONE_DAY,
+                removalPolicy: RemovalPolicy.DESTROY,
+            }),
         });
 
         // webapp hanlder
-        const webapp = new NodejsFunction(this, 'Webapp', {
-            entry: `${__dirname}/../../tsukumogami-web/.output/server/index.mjs`,
+        const webapp = new DockerImageFunction(this, 'Webapp', {
+            code: DockerImageCode.fromImageAsset(`${__dirname}/../../tsukumogami-web`),
+            memorySize: 2048,
             timeout: Duration.seconds(60),
             environment: {
-                FOUNDATION_MODEL: foundationModel.modelId,
+                NUXT_FOUNDATION_MODEL: foundationModel.modelId,
             },
             logGroup: new LogGroup(this, 'WebappLogGroup', {
                 retention: RetentionDays.ONE_DAY,
@@ -74,7 +78,7 @@ export class TsukumogamiAwsStack extends Stack {
                 '/_nuxt/**': s3BucketBehavior,
                 '/robot.txt': s3BucketBehavior,
                 '/favicon.ico': s3BucketBehavior,
-                
+
             }
         });
 
