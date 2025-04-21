@@ -15,7 +15,7 @@ const send = async () => {
 <template>
     <h1>TSUKUMOGAMI</h1>
     <h4>prompt</h4>
-    <input type="text" v-model="prompt" placeholder="Enter new prompt" />
+    <textarea v-model="prompt" placeholder="Enter new prompt" rows="6" style="width: 100%; resize: vertical;" />
     <button @click="send">send</button>
     <h4>answer</h4>
     <p style="white-space: pre-line;">{{ answer }}</p>

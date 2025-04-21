@@ -18,6 +18,13 @@ export default defineEventHandler(async (event) => {
         inputText: prompt,
         streamingConfigurations: { streamFinalResponse: false },
         enableTrace: true,
+        actionGroups: [{
+            actionGroupName: 'UserInput',
+            parentActionGroupSignature: 'AMAZON.UserInput'
+        }, {
+            actionGroupName: 'CodeInterpreter',
+            parentActionGroupSignature: 'AMAZON.CodeInterpreter'
+        },],
     });
     const result = await bedrockAgentClient.send(command);
 

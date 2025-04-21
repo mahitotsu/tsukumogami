@@ -3,7 +3,7 @@ import { FoundationModel, FoundationModelIdentifier } from "aws-cdk-lib/aws-bedr
 import { AllowedMethods, BehaviorOptions, CachePolicy, Distribution } from "aws-cdk-lib/aws-cloudfront";
 import { FunctionUrlOrigin, S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
-import { Code, DockerImageCode, DockerImageFunction, Function, FunctionUrlAuthType, InvokeMode, Runtime, RuntimeFamily } from "aws-cdk-lib/aws-lambda";
+import { Code, Function, FunctionUrlAuthType, InvokeMode, Runtime } from "aws-cdk-lib/aws-lambda";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
@@ -13,7 +13,7 @@ export class TsukumogamiAwsStack extends Stack {
     constructor(scope: Construct, id: string, props: StackProps) {
         super(scope, id, props);
 
-        const foundationModelId = FoundationModelIdentifier.AMAZON_NOVA_MICRO_V1_0;
+        const foundationModelId = FoundationModelIdentifier.ANTHROPIC_CLAUDE_3_5_HAIKU_20241022_V1_0;
         const foundationModel = FoundationModel.fromFoundationModelId(this, 'FoundationModel', foundationModelId);
 
         // webapp static contents
@@ -41,7 +41,7 @@ export class TsukumogamiAwsStack extends Stack {
             memorySize: 2048,
             timeout: Duration.seconds(60),
             environment: {
-                NUXT_FOUNDATION_MODEL: foundationModel.modelId,
+                NUXT_FOUNDATION_MODEL: 'us.' + foundationModel.modelId,
             },
             logGroup: new LogGroup(this, 'WebappLogGroup', {
                 retention: RetentionDays.ONE_DAY,
@@ -50,13 +50,8 @@ export class TsukumogamiAwsStack extends Stack {
         });
         webapp.addToRolePolicy(new PolicyStatement({
             effect: Effect.ALLOW,
-            actions: ['bedrock:InvokeInlineAgent'],
+            actions: ['bedrock:InvokeInlineAgent', 'bedrock:InvokeModel*', 'bedrock:*InferenceProfile'],
             resources: ['*'],
-        }));
-        webapp.addToRolePolicy(new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['bedrock:InvokeModel*'],
-            resources: [foundationModel.modelArn],
         }));
 
         // webapp endponts
