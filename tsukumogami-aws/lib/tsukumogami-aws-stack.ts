@@ -3,7 +3,7 @@ import { FoundationModel, FoundationModelIdentifier } from "aws-cdk-lib/aws-bedr
 import { AllowedMethods, BehaviorOptions, CachePolicy, Distribution } from "aws-cdk-lib/aws-cloudfront";
 import { FunctionUrlOrigin, S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
-import { DockerImageCode, DockerImageFunction, FunctionUrlAuthType, InvokeMode } from "aws-cdk-lib/aws-lambda";
+import { Code, DockerImageCode, DockerImageFunction, Function, FunctionUrlAuthType, InvokeMode, Runtime, RuntimeFamily } from "aws-cdk-lib/aws-lambda";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
@@ -34,8 +34,10 @@ export class TsukumogamiAwsStack extends Stack {
         });
 
         // webapp hanlder
-        const webapp = new DockerImageFunction(this, 'Webapp', {
-            code: DockerImageCode.fromImageAsset(`${__dirname}/../../tsukumogami-web`),
+        const webapp = new Function(this, 'Webapp', {
+            code: Code.fromAsset(`${__dirname}/../../tsukumogami-web/.output/server`),
+            handler: 'index.handler',
+            runtime: Runtime.NODEJS_22_X,
             memorySize: 2048,
             timeout: Duration.seconds(60),
             environment: {
