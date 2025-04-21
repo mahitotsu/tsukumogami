@@ -17,16 +17,23 @@ export default defineEventHandler(async (event) => {
         instruction: 'You are a dedicated agent assigned to each customer.',
         inputText: prompt,
         streamingConfigurations: { streamFinalResponse: false },
+        enableTrace: true,
     });
     const result = await bedrockAgentClient.send(command);
 
-    const response = event.node.res;
-    response.statusCode = 200;
-    response.setHeader('Content-Type', 'text/plain');
+    let answer = '';
+    let trace = '';
     for await (const item of result.completion!) {
         if (item.chunk?.bytes) {
-            response.write(Buffer.from(item.chunk.bytes).toString('utf-8'));
+            answer += Buffer.from(item.chunk.bytes).toString('utf-8');
+        }
+        if (item.trace?.trace) {
+            trace += JSON.stringify(item.trace.trace);
+            trace += '\n\n';
         }
     }
-    response.end();
+
+    setResponseStatus(event, 200);
+    setHeader(event, 'content-type', 'application/json')
+    return { answer, trace };
 })
