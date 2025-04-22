@@ -1,8 +1,5 @@
 
 import { BedrockAgentRuntimeClient, InvokeInlineAgentCommand } from '@aws-sdk/client-bedrock-agent-runtime';
-import { initClientBundle } from '@nuxt/icon/runtime/components/shared.js';
-import { isTemplateSpan } from 'typescript';
-import { stringifyQuery } from 'vue-router';
 
 const bedrockAgentClient = new BedrockAgentRuntimeClient();
 
@@ -14,14 +11,13 @@ export default defineEventHandler(async (event) => {
     const foundationModel = runtimeConfig.foundationModel;
     const sessionId = Date.now().toString();
 
-    let prompt = body.prompt || 'What should I talk about?';
+    let prompt = body.prompt || 'What can I say?';
     let inlineSessionState: any = undefined;
-    let returnControls = [];
+    let returnControl = undefined;
     let answer = '';
     let trace = '';
 
     do {
-        returnControls = [];
         const command = new InvokeInlineAgentCommand({
             sessionId, foundationModel,
             instruction: 'You are a dedicated agent assigned to each customer.',
@@ -63,58 +59,53 @@ export default defineEventHandler(async (event) => {
                 trace += JSON.stringify(item.trace.trace);
                 trace += '\n\n';
             }
-            if (item.returnControl) {
-                returnControls.push(item.returnControl);
-            }
+            returnControl = item.returnControl;
         }
 
-        if (returnControls.length > 0) {
-            inlineSessionState = await processReturnControls(returnControls);
-            // prompt = '';
+        if (returnControl) {
+            inlineSessionState = await processReturnControls(returnControl);
+            prompt = 'See the inlineSessionState.';
         } else {
             inlineSessionState = undefined;
         }
-        console.log(JSON.stringify({
-            returnControls, inlineSessionState,
-        }))
-    } while (returnControls.length > 0);
+    } while (returnControl);
 
     setResponseStatus(event, 200);
     setHeader(event, 'content-type', 'application/json')
     return { answer, trace };
 })
 
-const processReturnControls = async (returnControls: any[]) => {
-    if (returnControls.length === 0) return undefined;
+const processReturnControls = async (returnControl: any) => {
+
+    const { invocationId, invocationInputs } = returnControl;
 
     const results = [];
-    for (const control of returnControls) {
-        const { invocationId, invocationInputs } = control;
-        for (const input of invocationInputs) {
-            const { actionGroup, function: funcName, parameters } = input.functionInvocationInput;
-            let result;
-            try {
-                result = (localTools as Record<string, any>)[actionGroup][funcName](parameters);
-            } catch (e) {
-                result = { error: (e as Error).message };
-            }
-            results.push({
-                invocationId,
-                functionResult: {
-                    actionGroup,
-                    function: funcName,
-                    responseBody: { TEXT: { body: JSON.stringify(result) } },
-                }
-            });
+    for (const input of invocationInputs) {
+        const { actionGroup, function: funcName, parameters } = input.functionInvocationInput;
+        let result;
+        try {
+            result = (localTools as Record<string, any>)[actionGroup][funcName](parameters);
+        } catch (e) {
+            result = { error: (e as Error).message };
         }
+        results.push({
+            functionResult: {
+                actionGroup,
+                function: funcName,
+                responseBody: { TEXT: { body: JSON.stringify(result) } },
+            }
+        });
     }
-    return { returnControlInvocationResults: results };
+    return {
+        invocationId,
+        returnControlInvocationResults: results
+    };
 }
 
 const localTools = {
     DatabaseAccessTools: {
         query: (params: any) => {
-            return params;
+            return [{ idx: 1, val: 'v1' }, { idx: 2, val: 'v2' }, { idx: 3, val: 'v3' }];
         }
     }
 }
