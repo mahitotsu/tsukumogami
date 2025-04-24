@@ -1,12 +1,13 @@
 import { BedrockAgentRuntimeClient, FunctionParameter, InlineSessionState, InvocationResultMember, InvokeInlineAgentCommand, ReturnControlPayload } from "@aws-sdk/client-bedrock-agent-runtime";
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { v4 as uuid } from "uuid";
 
 const agentClient = new BedrockAgentRuntimeClient();
 const foundationModel = process.env.FOUNDATION_MODEL;
 
 export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
 
-    const payload = event.body ? JSON.parse(event.body) : undefined;
+    const payload = event.body as any;
     if (!(payload && payload.prompt)) {
         return {
             statusCode: 400,
@@ -20,7 +21,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
     let _answer = '';
     let _trace = '';
 
-    const _sessionId = Date.now().toString();
+    const _sessionId = uuid();
     const _accountNumber = '1234567';
     const _applicationTools = applicationTools(_accountNumber);
 
@@ -28,30 +29,34 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
         const command = new InvokeInlineAgentCommand({
             foundationModel,
             sessionId: _sessionId,
-            instruction: 'You are a dedicated agent assigned to each customer.',
+            instruction: `
+            You act as a dedicated agent for your client, helping them operate an application.
+
+            The application stores data in tables defined by the following DDL:
+            -----
+            CREATE TABLE account_transactions (
+                account_number CHAR(7) NOT NULL, -- Target account number (7-digit numeric)
+                recorded_date TIMESTAMP NOT NULL, -- Transaction record timestamp
+                amount NUMERIC(13,0) NOT NULL, -- Transaction amount: deposits are positive, withdrawals are negative
+                balance NUMERIC(13,0) NOT NULL, -- Account balance after this transaction
+                memo TEXT, -- Optional memo for the transaction
+                CHECK (account_number ~ '^[0-9]{7}$'), -- Only 7-digit numbers allowed for account number
+                CHECK (amount > 0 AND amount < 1000000000000), -- Amount must be a positive integer less than 1 trillion
+                PRIMARY KEY (account_number, recorded_date) -- Composite primary key: account number and record timestamp
+            );
+            -----
+
+            Searches of the account_transaction table must always follow these rules:
+            - The search criteria must include the condition that account_number equals ${_accountNumber}.
+            - The search results must always include the account_number.
+            - The value of account_number in the search results must not be modified in any way.
+            `,
             inputText: _inputText,
             streamingConfigurations: { streamFinalResponse: false },
             enableTrace: true,
             actionGroups: [{
                 actionGroupName: 'TxActions',
-                description: `
-                This action group provides tools for transactions. Transactions are stored in the table created with the following DDL:
-                -----
-                CREATE TABLE account_transactions (
-                    account_number CHAR(7) NOT NULL, -- Target account number (7-digit numeric)
-                    recorded_date TIMESTAMP NOT NULL, -- Transaction record timestamp
-                    amount NUMERIC(13,0) NOT NULL, -- Transaction amount: deposits are positive, withdrawals are negative
-                    balance NUMERIC(13,0) NOT NULL, -- Account balance after this transaction
-                    memo TEXT, -- Optional memo for the transaction
-                    CHECK (account_number ~ '^[0-9]{7}$'), -- Only 7-digit numbers allowed for account number
-                    CHECK (amount > 0 AND amount < 1000000000000), -- Amount must be a positive integer less than 1 trillion
-                    PRIMARY KEY (account_number, recorded_date) -- Composite primary key: account number and record timestamp
-                );
-                -----
-                The following rules are followed when selecting records from the table.
-                - The search result records must include the account_number column.
-                - The search criteria must include the condition "account_number column is equal to ${_accountNumber}."
-                `,
+                description: `This action group provides tools for transaction operations. `,
                 actionGroupExecutor: { customControl: 'RETURN_CONTROL' },
                 functionSchema: {
                     functions: [{
@@ -99,7 +104,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ ansser: _answer, trace: _trace })
+        body: JSON.stringify({ answer: _answer, trace: _trace })
     };
 }
 
@@ -156,6 +161,12 @@ const applicationTools = (accountNumber: string) => {
     return {
         TxActions: {
             listTransactions: (args: Record<string, any>): Record<string, any>[] => {
+
+                const _statement = args.statement;
+                if (_statement === undefined) {
+                    return [];
+                }
+
                 const recordSet = [{
                     account_number: '1234567',
                     recorded_date: '2024-11-22T13:24:56',
