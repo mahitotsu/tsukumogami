@@ -1,5 +1,6 @@
 import { RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
 import { FoundationModel, FoundationModelIdentifier } from "aws-cdk-lib/aws-bedrock";
+import { Runtime } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
@@ -12,6 +13,7 @@ export class TsukumogamiAwsStack extends Stack {
         const foundationModel = FoundationModel.fromFoundationModelId(this, 'FoundationModel', foundationModelId);
 
         const myAgent = new NodejsFunction(this, 'MyAgent', {
+            runtime: Runtime.NODEJS_22_X,
             entry: `${__dirname}/functions/my-agent.ts`,
             environment: {
                 FOUNDATION_MODEL: foundationModel.modelId,

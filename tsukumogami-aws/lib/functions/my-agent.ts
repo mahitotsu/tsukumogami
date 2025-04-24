@@ -154,7 +154,7 @@ const parametersToMap = (parameters: FunctionParameter[] | undefined) => {
 const applicationTools = (accountNumber: string) => {
 
     return {
-        TxTools: {
+        TxActions: {
             listTransactions: (args: Record<string, any>): Record<string, any>[] => {
                 const recordSet = [{
                     account_number: '1234567',
