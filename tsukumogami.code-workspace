@@ -8,6 +8,9 @@
         },
         {
             "path": "tsukumogami-web"
+        },
+        {
+            "path": "tsukumogami-api"
         }
     ]
 }
