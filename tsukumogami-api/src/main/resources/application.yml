@@ -1,0 +1,6 @@
+tsukumogami:
+    agentservice:
+        foundationModel: apac.amazon.nova-micro-v1:0
+        instruction: |
+            You are a friendly and knowledgeable AI assistant,
+            providing concise and easy-to-understand responses to all user questions.
