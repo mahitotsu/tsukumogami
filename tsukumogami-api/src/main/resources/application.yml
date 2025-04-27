@@ -1,6 +1,21 @@
 tsukumogami:
     agentservice:
         foundationModel: apac.amazon.nova-micro-v1:0
+        # foundationModel: apac.anthropic.claude-3-5-sonnet-20241022-v2:0
         instruction: |
             You are a friendly and knowledgeable AI assistant,
             providing concise and easy-to-understand responses to all user questions.
+        actionGroups:
+        - name: "RdbOperations"
+          description: "Provides tools for manipulating relational databases."
+          functions:
+          - name: "executeQuery"
+            description: |
+                Executes the specified query SQL statement and returns the results as a JSON array.
+                If no corresponding records exist, an empty array is returned.
+            parameters:
+              - name: "statement"
+                type: "string"
+                description: "The SQL query to execute"
+
+                                
