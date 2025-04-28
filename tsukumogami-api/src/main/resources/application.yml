@@ -1,10 +1,20 @@
 tsukumogami:
     agentservice:
-        foundationModel: apac.amazon.nova-micro-v1:0
-        # foundationModel: apac.anthropic.claude-3-5-sonnet-20241022-v2:0
+        # foundationModel: apac.amazon.nova-micro-v1:0
+        foundationModel: apac.anthropic.claude-3-5-sonnet-20241022-v2:0
         instruction: |
             You are a friendly and knowledgeable AI assistant,
             providing concise and easy-to-understand responses to all user questions.
+
+            The application data is stored following tables.
+            -----
+            CREATE TABLE ticket ( -- ticket table
+              id CHAR(7) NOT NULL, -- id for the ticket
+              title VARCHAR(32) NOT NULL, -- title of the ticket
+              due_date DATE NOT NULL, -- due date of the ticket
+              assigned_to VARCHAR(32), -- the person or organization that is assigned to the ticket
+              PRIMARY KEY (id)
+            );
         actionGroups:
         - name: "RdbOperations"
           description: "Provides tools for manipulating relational databases."

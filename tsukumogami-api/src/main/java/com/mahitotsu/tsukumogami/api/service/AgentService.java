@@ -1,5 +1,6 @@
 package com.mahitotsu.tsukumogami.api.service;
 
+import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -7,11 +8,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.BeanFactoryAnnotationUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockagentruntime.model.ContentBody;
@@ -36,6 +41,11 @@ public class AgentService extends InlineAgentServiceProperties {
     @Autowired
     private BeanFactory beanFactory;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
+
     public String getChatResponse(final String userInput) {
 
         final String inputText = userInput;
@@ -53,7 +63,8 @@ public class AgentService extends InlineAgentServiceProperties {
                     .build();
 
             returnControlPayload.set(null);
-            final InvokeInlineAgentResponseHandler handler = this.initInvokeInlineAgentResponseHandler(answer,
+            final InvokeInlineAgentResponseHandler handler = this.initInvokeInlineAgentResponseHandler(
+                    answer,
                     returnControlPayload);
 
             this.bedrockAgentRuntimeAsyncClient.invokeInlineAgent(request, handler).join();
@@ -73,17 +84,20 @@ public class AgentService extends InlineAgentServiceProperties {
     }
 
     private InvokeInlineAgentResponseHandler initInvokeInlineAgentResponseHandler(
-            final StringBuilder answer, final ValueHolder<InlineAgentReturnControlPayload> returnControlPayload) {
+            final StringBuilder answer,
+            final ValueHolder<InlineAgentReturnControlPayload> returnControlPayload) {
 
         return InvokeInlineAgentResponseHandler.builder()
                 .onEventStream(publisher -> publisher.subscribe(event -> event.accept(Visitor.builder()
-                        .onChunk(c -> answer.append(c.bytes().asString(Charset.defaultCharset())))
+                        .onChunk(c -> answer
+                                .append(c.bytes().asString(Charset.defaultCharset())))
                         .onReturnControl(rc -> returnControlPayload.set(rc))
                         .build())))
                 .build();
     }
 
-    private Collection<InvocationResultMember> processReturnControlPayload(final InlineAgentReturnControlPayload rc) {
+    private Collection<InvocationResultMember> processReturnControlPayload(
+            final InlineAgentReturnControlPayload rc) {
 
         final Collection<InvocationResultMember> results = new ArrayList<>();
 
@@ -94,10 +108,30 @@ public class AgentService extends InlineAgentServiceProperties {
             final List<FunctionParameter> parameters = input.parameters();
             String body;
             try {
-                body = BeanFactoryAnnotationUtils.qualifiedBeanOfType(this.beanFactory,
-                        ActionGroupFunction.class, actionGroup + "." + function)
-                        .invoke(parameters);
+                final Object actionImpl = BeanFactoryAnnotationUtils.qualifiedBeanOfType(this.beanFactory, Object.class,
+                        actionGroup);
+                final Class<?>[] argTypes = parameters.stream().map(p -> {
+                    switch (p.type()) {
+                        case "string":
+                            return String.class;
+                        case "number":
+                            return double.class;
+                        case "integer":
+                            return int.class;
+                        case "boolean":
+                            return boolean.class;
+                        case "array":
+                            return new Object[] {}.getClass();
+                        default:
+                            return Object.class;
+                    }
+                }).toArray(length -> new Class<?>[length]);
+                final Method method = actionImpl.getClass().getMethod(function, argTypes);
+                final Object[] args = parameters.stream().map(p -> p.value()).toArray();
+                final Object result = method.invoke(actionImpl, args);
+                body = this.objectMapper.writeValueAsString(result);
             } catch (final Exception e) {
+                this.logger.error("An error occurred during process the invocation input.",e);
                 body = e.toString();
             }
             final InvocationResultMember result = InvocationResultMember.builder()
