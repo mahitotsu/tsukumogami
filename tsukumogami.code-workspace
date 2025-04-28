@@ -12,5 +12,8 @@
         {
             "path": "tsukumogami-api"
         }
-    ]
+    ],
+    "settings": {
+        "java.compile.nullAnalysis.mode": "automatic"
+    }
 }
