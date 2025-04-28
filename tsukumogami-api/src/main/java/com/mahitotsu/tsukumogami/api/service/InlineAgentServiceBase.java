@@ -13,8 +13,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.BeanFactoryAnnotationUtils;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -31,9 +29,7 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeInlineAge
 import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeInlineAgentResponseHandler;
 import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeInlineAgentResponseHandler.Visitor;
 
-@Service
-@ConfigurationProperties(prefix = "tsukumogami.agentservice")
-public class AgentService extends InlineAgentServiceProperties {
+public abstract class InlineAgentServiceBase extends InlineAgentServiceProperties {
 
     @Autowired
     private BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;
@@ -131,7 +127,7 @@ public class AgentService extends InlineAgentServiceProperties {
                 final Object result = method.invoke(actionImpl, args);
                 body = this.objectMapper.writeValueAsString(result);
             } catch (final Exception e) {
-                this.logger.error("An error occurred during process the invocation input.",e);
+                this.logger.error("An error occurred during process the invocation input.", e);
                 body = e.toString();
             }
             final InvocationResultMember result = InvocationResultMember.builder()

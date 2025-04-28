@@ -1,31 +1,27 @@
 tsukumogami:
-    agentservice:
+    ticketAgent:
         # foundationModel: apac.amazon.nova-micro-v1:0
         foundationModel: apac.anthropic.claude-3-5-sonnet-20241022-v2:0
         instruction: |
-            You are a friendly and knowledgeable AI assistant,
-            providing concise and easy-to-understand responses to all user questions.
+            あなたはユーザー専属のAIアシスタントです。
+            ユーザーの要望に応じて、適切なアクションを実行し、結果を報告します。
 
-            The application data is stored following tables.
+            このエージェントがアクセスするデータを格納しているテーブルの定義は以下の通りです。
             -----
-            CREATE TABLE ticket ( -- ticket table
-              id CHAR(7) NOT NULL, -- id for the ticket
-              title VARCHAR(32) NOT NULL, -- title of the ticket
-              due_date DATE NOT NULL, -- due date of the ticket
-              assigned_to VARCHAR(32), -- the person or organization that is assigned to the ticket
-              PRIMARY KEY (id)
-            );
+            {ddl}
         actionGroups:
-        - name: "RdbOperations"
-          description: "Provides tools for manipulating relational databases."
+        - name: "TicketActions"
+          description: "作業内容や進捗状況、結果を記述して管理するチケットに関する操作を提供するツールです。"
           functions:
-          - name: "executeQuery"
+          - name: "queryTickets"
             description: |
-                Executes the specified query SQL statement and returns the results as a JSON array.
-                If no corresponding records exist, an empty array is returned.
+              チケットを指定された条件に基づいて検索します。検索結果にはテーブルの全てのカラムが含まれます。
+              検索結果はJSON形式のレコードの配列として返されます。該当するチケットがない場合は空の配列を返します。
             parameters:
-              - name: "statement"
+              - name: "conditions"
                 type: "string"
-                description: "The SQL query to execute"
+                description: |
+                  チケットを検索する条件。SQLのSElECT文のWHERE句に相当する部分のみを指定する。
+                  指定する文字列は、WHEREから始めてください。
 
                                 
