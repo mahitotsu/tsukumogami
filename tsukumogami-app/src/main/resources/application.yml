@@ -1,0 +1,77 @@
+spring:
+  jpa:
+    open-in-view: false
+
+tsukumogami:
+    tools:
+        workorder:
+            name: WorkOrderTool
+            description: |
+                作業指示書に関する操作を提供するツールです。
+            functions:
+                - name: listWorkOrders
+                  description: |
+                    指定された条件に合致する作業指示書の一覧を取得します。
+                    返されるのは作業指示書の識別子のリストです。
+                    作業指示書の詳細はgetWorkOrderで取得できます。
+                    合致するリストがない場合は空の配列を返します。
+                  parameters:
+                    - name: condition
+                      type: string
+                      required: true
+                      description: |
+                        リストを抽出する条件。SQLのSElECT文のWHERE句に相当する部分のみを指定する。
+                        指定する文字列に、WHEREから始めてください。
+                - name: describeWorkOrder 
+                  description: |
+                    指定された識別子で特定される作業指示書の詳細を取得します。
+                    合致する作業指示書がない場合は例外が発生します。
+                  parameters:
+                    - name: workOrderId
+                      type: string
+                      required: true
+                      description: |
+                        取得する作業指示書を特定する識別子。
+                        UUID形式の文字列です。
+                - name: createWorkOrder
+                  description: |
+                    指定された内容で作業指示書を新規に作成します。
+                    新たに作成さえれた作業指示書の識別子を返します。
+                  parameters:
+                    - name: title
+                      type: string
+                      required: true
+                      description: |
+                        作業指示書のタイトル。作業内容を簡潔に表す文字列を指定する。
+                        概ね500文字程度に納めてください。最大長は100文字までです。
+                    - name: assignee
+                      type: string
+                      required: true
+                      description: |
+                        作業指示書を担当する作業者の名前。作業者の識別子を指定する。
+                        64文字以内のメールアドレス形式の文字列です。
+                    - name: instruction
+                      type: string
+                      required: true
+                      description: |
+                        作業内容を記述した文書。作業内容の詳細を具体的に曖昧さを極力排除して記述する。
+                        概ね500文字程度に納めてください。最大長は1000文字までです。
+                - name: registerWorkResult
+                  description: |
+                    作業指示書に対する作業結果を登録します。
+                    単一の作業指示に対して複数の作業結果が登録可能です。
+                    登録された作業結果の識別子を返します。
+                  parameters:
+                    - name: workOrderId
+                      type: string
+                      required: true
+                      description: |
+                        作業指示書の識別子。作業指示書を一意に特定する文字列を指定する。
+                        UUID形式の文字列です。
+                    - name: result 
+                      type: string
+                      required: true
+                      description: |
+                        作業結果を記述した文書。作業結果の詳細を具体的に曖昧さを極力排除して記述する。
+                        概ね500文字程度に納めてください。最大長は1000文字までです。
+    agents:
