@@ -23,6 +23,5 @@ public class ToolProperties {
     }
 
     private String description;
-    private String name;
     private List<Function> functions;
 }

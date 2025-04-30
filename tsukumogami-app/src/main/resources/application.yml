@@ -1,11 +1,21 @@
 spring:
   jpa:
     open-in-view: false
+    properties:
+      jakarta.persistence.validation.group.pre-update: com.mahitotsu.tsukumogami.app.jap.OnUpdate
+      
 
 tsukumogami:
+    agents:
+      bankaccount:
+        # foundationModel: apac.amazon.nova-micro-v1:0
+        foundationModel: apac.anthropic.claude-3-5-sonnet-20241022-v2:0
+        instruction: |
+          あなたはユーザーの銀行口座に関する作業を行うエージェントです。
+          指定された作業指示書に記述された指示を慎重に考慮して作業を実施します。
+          実施した作業の内容は作業指示書の作業結果として登録します。作業結果は可能な限り具体的に省略せずに登録します。
     tools:
         workorder:
-            name: WorkOrderTool
             description: |
                 作業指示書に関する操作を提供するツールです。
             functions:
@@ -74,4 +84,68 @@ tsukumogami:
                       description: |
                         作業結果を記述した文書。作業結果の詳細を具体的に曖昧さを極力排除して記述する。
                         概ね500文字程度に納めてください。最大長は1000文字までです。
-    agents:
+                - name: activateNextTask
+                  description: |
+                    指定されたメールアドレス形式の文字列が担当者に設定されている、かつ未着手の1件の詳細を返します。
+                    返される作業指示書のステータスは未着手から進行中に変更されてから返されます。
+                    該当する作業指示書が無い場合はNULLが返されます。
+                  parameters:
+                    - name: assignee
+                      type: string
+                      required: true
+                      description: |
+                        作業指示書を担当する作業者の名前。作業者の識別子を指定する。
+                        64文字以内のメールアドレス形式の文字列です。
+        bankaccount:
+          description: |
+            銀行口座に関する操作を提供するツールです。
+          functions:
+            - name: deposit
+              description: |
+                指定された口座番号の口座に指定された金額を預け入れます。
+                以下の場合は例外が発生します。
+                * 指定された口座番号の口座が無い場合
+                * 指定された口座の残高から指定された金額を加算すると残高が上限を超える場合
+              parameters:
+                - name: accountNumber
+                  type: string
+                  required: true
+                  description: |
+                    預け入れる口座の口座番号を指定します。
+                    10桁の数字です。
+                - name: ammount 
+                  type: integer
+                  required: true
+                  description: |
+                    預け入れる金額を指定します。
+                    0以上、1000000000000未満の正数を指定します。
+            - name: withdraw 
+              description: |
+                指定された口座番号の口座から指定された金額を払い出します。
+                以下の場合は例外が発生します。
+                * 指定された口座番号の口座が無い場合
+                * 指定された口座の残高から指定された金額を減算すると残高が負数になる場合
+              parameters:
+                - name: accountNumber
+                  type: string
+                  required: true
+                  description: |
+                    払い出しする口座の口座番号を指定します。
+                    10桁の数字です。
+                - name: ammount 
+                  type: integer
+                  required: true
+                  description: |
+                    払い出す金額を指定します。
+                    0以上、1000000000000未満の正数を指定します。
+            - name: getBalance 
+              description: |
+                指定された口座番号の口座の残高を返します。残高の上限は9999999999999999です。
+                該当する口座が無い場合は例外が発生します。 
+              parameters:
+                - name: accountNumber
+                  type: string
+                  required: true
+                  description: |
+                    残高を取得する口座の口座番号を指定します。
+                    10桁の数字です。

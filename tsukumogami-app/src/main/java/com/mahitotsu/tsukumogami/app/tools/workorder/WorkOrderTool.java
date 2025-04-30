@@ -12,4 +12,6 @@ public interface WorkOrderTool {
     UUID createWorkOrder(String title, String assignee, String instruction);
 
     UUID registerWorkResult(UUID workOrderId, String result);
+
+    WorkOrderEntity activateNextWorkOrder(String assignee);
 }

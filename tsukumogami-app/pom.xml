@@ -17,6 +17,10 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.awspring.cloud</groupId>
             <artifactId>spring-cloud-aws-starter</artifactId>
         </dependency>
@@ -119,10 +123,12 @@
                             </environmentVariables>
                             <systemPropertyVariables>
                                 <spring.sql.init.schema-locations>
-                                    classpath:/ddl/workorder-schema.sql
+                                    classpath:/ddl/workorder-schema.sql,
+                                    classpath:/ddl/bankaccount-schema.sql,
                                 </spring.sql.init.schema-locations>
                                 <spring.sql.init.data-locations>
-                                    optional:classpath:/data/workorder-data.sql
+                                    optional:classpath:/data/workorder-data.sql,
+                                    optional:classpath:/data/bankaccount-data.sql,
                                 </spring.sql.init.data-locations>
                             </systemPropertyVariables>
                         </configuration>

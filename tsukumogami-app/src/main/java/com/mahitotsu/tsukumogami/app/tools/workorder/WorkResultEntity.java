@@ -15,7 +15,7 @@ import lombok.Data;
 public class WorkResultEntity {
     
     @Id
-    @Column(name = "id")
+    @Column(name = "id", updatable = false)
     private UUID id;
 
     @Column(name = "work_order_id")
@@ -24,6 +24,6 @@ public class WorkResultEntity {
     @Column(name = "result")
     private String result;
 
-    @Column(name = "registered_at")
+    @Column(name = "registered_at", insertable = false, updatable = false)
     private LocalDateTime registeredAt;
 }

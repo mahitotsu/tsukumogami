@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mahitotsu.tsukumogami.app.tools.ToolBase;
+import com.mahitotsu.tsukumogami.app.tools.workorder.WorkOrderEntity.Status;
 
 @Component("WorkOrderTool")
 @ConfigurationProperties(prefix = "tsukumogami.tools.workorder")
@@ -45,6 +46,7 @@ public class WorkOrderToolBean extends ToolBase implements WorkOrderTool {
         workOrder.setTitle(title);
         workOrder.setAssignee(assignee);
         workOrder.setInstruction(instruction);
+        workOrder.setStatus(Status.TODO);
 
         return this.workOrderRepository.save(workOrder).getId();
     }
@@ -59,5 +61,22 @@ public class WorkOrderToolBean extends ToolBase implements WorkOrderTool {
         workResult.setResult(result);
 
         return this.workResultRepository.save(workResult).getId();
+    }
+
+    @Transactional
+    @Override
+    public WorkOrderEntity activateNextWorkOrder(final String assignee) {
+
+        if (assignee == null) {
+            return null;
+        }
+
+        final WorkOrderEntity workOrder = this.workOrderRepository.findNextWorkOrder(assignee).orElse(null);
+        if (workOrder == null) {
+            return null;
+        }
+
+        workOrder.setStatus(Status.IN_PROGRESS);
+        return workOrder;
     }
 }
