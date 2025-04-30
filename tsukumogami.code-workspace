@@ -14,6 +14,9 @@
         },
         {
             "path": "tsukumogami-app"
+        },
+        {
+            "path": "tsukumogami-apl"
         }
     ],
     "settings": {
