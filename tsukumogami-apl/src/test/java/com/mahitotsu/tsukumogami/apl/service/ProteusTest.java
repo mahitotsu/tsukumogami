@@ -11,10 +11,22 @@ public class ProteusTest extends TestBase {
     private Proteus proteus;
 
     @Test
-    public void testExecute() {
+    public void test_WhatDayToday() {
 
         final String workOrder = """
-                現時点で期限が今週末で自分自身に割り当てられているチケットが何件あるか調べてください。
+                今日は何月何日の何曜日ですか。
+                 """;
+        final String resultReport = this.proteus.execute(workOrder);
+        System.out.println(resultReport);
+    }
+
+    @Test
+    public void test_CreateTicket() {
+
+        final String workOrder = """
+                明日、本格的なインドカレーを作成したいと考えています。
+                それまでに必要な食材を買いそろえる必要があります。
+                このことを忘れずに実行するために今日期限のチケットを起票しておいてください。
                  """;
         final String resultReport = this.proteus.execute(workOrder);
         System.out.println(resultReport);

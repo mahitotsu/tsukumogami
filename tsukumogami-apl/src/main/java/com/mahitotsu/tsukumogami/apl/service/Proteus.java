@@ -21,12 +21,13 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mahitotsu.tsukumogami.apl.tools.ActionGroupProperties;
-import com.mahitotsu.tsukumogami.apl.tools.ag_provisioner.ActionGroupProvisionerBean;
+import com.mahitotsu.tsukumogami.apl.tools.provisioner.ActionGroupProvisionerBean;
 
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockagentruntime.model.AgentActionGroup;
 import software.amazon.awssdk.services.bedrockagentruntime.model.ContentBody;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FunctionInvocationInput;
+import software.amazon.awssdk.services.bedrockagentruntime.model.FunctionParameter;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FunctionResult;
 import software.amazon.awssdk.services.bedrockagentruntime.model.InlineAgentReturnControlPayload;
 import software.amazon.awssdk.services.bedrockagentruntime.model.InlineSessionState;
@@ -57,30 +58,26 @@ public class Proteus {
 
         final String sessionId = UUID.randomUUID().toString();
         final StringBuilder resultReport = new StringBuilder();
+
         final Deque<InlineSessionState> sessionState = new LinkedList<>();
+        final Deque<InlineAgentReturnControlPayload> returnControls = new LinkedList<>();
+        final Collection<InvocationResultMember> results = new ArrayList<>();
+
         final ActionGroupProvisionerBean provisioner = new ActionGroupProvisionerBean(this.actionGroupBeans);
-        final AgentActionGroup provisonerActionGroup = provisioner.toAgentActionGroup(provisioner);
 
         do {
-            final Deque<InlineAgentReturnControlPayload> returnControls = new LinkedList<>();
             final Collection<AgentActionGroup> actionGroups = new ArrayList<>();
-            actionGroups.add(provisonerActionGroup);
             actionGroups.addAll(provisioner.getActiveActionGroups());
 
-            this.bedrockAgentRuntimeAsyncClient
-                    .invokeInlineAgent(
-                            this.buildInvokeInlineAgentRequest(sessionId, workOrder,
-                                    sessionState.size() > 0 ? sessionState.pop() : null,
-                                    actionGroups),
-                            this.buildInvokeInlineAgentResponseHandler(resultReport,
-                                    returnControls))
+            returnControls.clear();
+            this.bedrockAgentRuntimeAsyncClient.invokeInlineAgent(
+                    this.buildInvokeInlineAgentRequest(sessionId, workOrder,
+                            sessionState.size() > 0 ? sessionState.pop() : null,
+                            actionGroups),
+                    this.buildInvokeInlineAgentResponseHandler(resultReport, returnControls))
                     .join();
 
-            if (returnControls.isEmpty()) {
-                break;
-            }
-
-            final Collection<InvocationResultMember> results = new ArrayList<>();
+            results.clear();
             for (final InlineAgentReturnControlPayload payload : returnControls) {
                 this.logger.info("process the payload: " + payload);
                 results.addAll(this.processResultControl(payload, provisioner));
@@ -90,10 +87,10 @@ public class Proteus {
                         .invocationId(returnControls.peek().invocationId())
                         .returnControlInvocationResults(results)
                         .build());
-                this.logger.info("complete the session state: " + sessionState.peek());
+                this.logger.info("the next session state: " + sessionState.peek());
             }
 
-        } while (sessionState.size() == 1 && sessionState.peek().hasReturnControlInvocationResults());
+        } while (returnControls.size() > 0);
 
         return resultReport.toString();
     }
@@ -105,16 +102,14 @@ public class Proteus {
                 .foundationModel("apac.anthropic.claude-3-5-sonnet-20241022-v2:0")
                 .instruction("""
                         あなたは作業指示の内容を慎重に理解して完遂することが出来るエージェントです。
-                        作業の遂行のために必要なツールはActionGroupProvisionerを通じて有効化することができます。
-                        作業完了後は、作業結果は省略することなく、順番を入れ替えることなく、詳細を具体的に報告します。
-                        -----
-                        作業遂行のために以下のツールが利用できます。使いたい場合、ActionGroupProvisioner以外は最初に有効化する必要があります。
-                        * Ticket: チケットの作成、参照、検索が可能なツールです。
-                        * Calender: 現在時刻、日付計算、特定日の曜日などが可能なツールです。
-                        * File: ファイルへの入出力、検索が可能なツールです。
+                        作業の遂行のために必要なツールはProvisionerを通じて検索して有効化することができます。
+
+                        注意事項
+                        * 日付を扱う場合、必ず計算の起点となる現在日時はツールを利用して最新の値を取得してください。
                         """)
                 .sessionId(sessionId)
-                .inputText(inputText)
+                .inputText(sessionState == null ? inputText : null)
+                .inlineSessionState(sessionState)
                 .actionGroups(actionGroups)
                 .enableTrace(true)
                 .build();
@@ -127,7 +122,7 @@ public class Proteus {
                 .onEventStream(publisher -> publisher.subscribe(event -> event.accept(Visitor.builder()
                         .onChunk(c -> outputText
                                 .append(c.bytes().asString(Charset.defaultCharset())))
-                        .onTrace(t -> this.logger.info(t.toString()))
+                        // .onTrace(t -> this.logger.info(t.toString()))
                         .onReturnControl(rc -> returnControls.add(rc))
                         .build())))
                 .build();
@@ -142,10 +137,10 @@ public class Proteus {
             try {
                 result = this.processReturnCotrol(i.functionInvocationInput(), provisoner);
             } catch (Exception e) {
-                this.logger.error(e.getMessage());
                 result = this.reportException(i.functionInvocationInput(), e);
+                e.printStackTrace();
             }
-            InvocationResultMember.builder().functionResult(result).build();
+            results.add(InvocationResultMember.builder().functionResult(result).build());
         }
 
         return results;
@@ -166,9 +161,11 @@ public class Proteus {
 
         final String actionGroup = input.actionGroup();
         final String function = input.function();
-        final ActionGroupProperties tool = Optional.ofNullable(provisioner.getActionGroupBean(actionGroup)).orElseThrow(
-                () -> new NoSuchElementException(
-                        "The specified actionGroup is not found. actionGroup=" + actionGroup));
+        final ActionGroupProperties tool = Optional.ofNullable(provisioner.getActionGroupBean(actionGroup))
+                .orElseThrow(
+                        () -> new NoSuchElementException(
+                                "The specified actionGroup is not found. actionGroup="
+                                        + actionGroup));
 
         final int numOfArgs = input.parameters().size();
         final Method method = Arrays.stream(tool.getToolApiType().getMethods())
@@ -179,8 +176,27 @@ public class Proteus {
 
         final Class<?>[] parameterTypes = method.getParameterTypes();
         final Object[] args = new Object[numOfArgs];
+        final FunctionParameter[] params = input.parameters().toArray(i -> new FunctionParameter[i]);
+        Arrays.sort(params, (p1, p2) -> p1.name().compareTo(p2.name()));
+
         for (int i = 0; i < args.length; i++) {
-            args[i] = this.converter.convert(input.parameters().get(i).value(), parameterTypes[i]);
+            final FunctionParameter param = params[i];
+            final String pv = param.value();
+            Object value;
+            switch (param.type()) {
+                case "string":
+                case "integer":
+                case "boolean":
+                    value = pv;
+                    break;
+                case "array":
+                    value = Arrays.stream(pv.substring(1, pv.length() - 1).split(",")).map(s -> s.trim())
+                            .toArray(j -> new String[j]);
+                    break;
+                default:
+                    throw new IllegalStateException("Unkonwn type is specified: " + param.type());
+            }
+            args[i] = this.converter.convert(value, parameterTypes[i]);
         }
 
         final Object result = method.invoke(tool, args);
