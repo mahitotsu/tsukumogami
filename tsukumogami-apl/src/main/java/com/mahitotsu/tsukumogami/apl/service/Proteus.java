@@ -8,7 +8,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.SequencedCollection;
@@ -17,13 +16,15 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mahitotsu.tsukumogami.apl.tools.ActionGroupProperties;
+import com.mahitotsu.tsukumogami.apl.tools.ag_provisioner.ActionGroupProvisionerBean;
 
 import software.amazon.awssdk.services.bedrockagentruntime.BedrockAgentRuntimeAsyncClient;
+import software.amazon.awssdk.services.bedrockagentruntime.model.AgentActionGroup;
 import software.amazon.awssdk.services.bedrockagentruntime.model.ContentBody;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FunctionInvocationInput;
 import software.amazon.awssdk.services.bedrockagentruntime.model.FunctionResult;
@@ -48,8 +49,7 @@ public class Proteus {
     private ConversionService converter;
 
     @Autowired(required = false)
-    @Qualifier("ActionGroup")
-    private Map<String, Object> actionGroups;
+    private Collection<ActionGroupProperties> actionGroupBeans;
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -58,14 +58,22 @@ public class Proteus {
         final String sessionId = UUID.randomUUID().toString();
         final StringBuilder resultReport = new StringBuilder();
         final Deque<InlineSessionState> sessionState = new LinkedList<>();
+        final ActionGroupProvisionerBean provisioner = new ActionGroupProvisionerBean(this.actionGroupBeans);
+        final AgentActionGroup provisonerActionGroup = provisioner.toAgentActionGroup(provisioner);
 
         do {
             final Deque<InlineAgentReturnControlPayload> returnControls = new LinkedList<>();
+            final Collection<AgentActionGroup> actionGroups = new ArrayList<>();
+            actionGroups.add(provisonerActionGroup);
+            actionGroups.addAll(provisioner.getActiveActionGroups());
+
             this.bedrockAgentRuntimeAsyncClient
                     .invokeInlineAgent(
                             this.buildInvokeInlineAgentRequest(sessionId, workOrder,
-                                    sessionState.size() > 0 ? sessionState.pop() : null),
-                            this.buildInvokeInlineAgentResponseHandler(resultReport, returnControls))
+                                    sessionState.size() > 0 ? sessionState.pop() : null,
+                                    actionGroups),
+                            this.buildInvokeInlineAgentResponseHandler(resultReport,
+                                    returnControls))
                     .join();
 
             if (returnControls.isEmpty()) {
@@ -74,12 +82,16 @@ public class Proteus {
 
             final Collection<InvocationResultMember> results = new ArrayList<>();
             for (final InlineAgentReturnControlPayload payload : returnControls) {
-                results.addAll(this.processResultControl(payload));
+                this.logger.info("process the payload: " + payload);
+                results.addAll(this.processResultControl(payload, provisioner));
             }
-            sessionState.push(InlineSessionState.builder()
-                    .invocationId(returnControls.peek().invocationId())
-                    .returnControlInvocationResults(results)
-                    .build());
+            if (results.size() > 0) {
+                sessionState.push(InlineSessionState.builder()
+                        .invocationId(returnControls.peek().invocationId())
+                        .returnControlInvocationResults(results)
+                        .build());
+                this.logger.info("complete the session state: " + sessionState.peek());
+            }
 
         } while (sessionState.size() == 1 && sessionState.peek().hasReturnControlInvocationResults());
 
@@ -87,16 +99,23 @@ public class Proteus {
     }
 
     private InvokeInlineAgentRequest buildInvokeInlineAgentRequest(final String sessionId, final String inputText,
-            final InlineSessionState sessionState) {
+            final InlineSessionState sessionState, final Collection<AgentActionGroup> actionGroups) {
 
         return InvokeInlineAgentRequest.builder()
                 .foundationModel("apac.anthropic.claude-3-5-sonnet-20241022-v2:0")
                 .instruction("""
                         あなたは作業指示の内容を慎重に理解して完遂することが出来るエージェントです。
-                        作業結果は省略することなく、順番を入れ替えることなく、詳細を具体的に報告します。
+                        作業の遂行のために必要なツールはActionGroupProvisionerを通じて有効化することができます。
+                        作業完了後は、作業結果は省略することなく、順番を入れ替えることなく、詳細を具体的に報告します。
+                        -----
+                        作業遂行のために以下のツールが利用できます。使いたい場合、ActionGroupProvisioner以外は最初に有効化する必要があります。
+                        * Ticket: チケットの作成、参照、検索が可能なツールです。
+                        * Calender: 現在時刻、日付計算、特定日の曜日などが可能なツールです。
+                        * File: ファイルへの入出力、検索が可能なツールです。
                         """)
                 .sessionId(sessionId)
-                .inputText(sessionState != null && sessionState.hasReturnControlInvocationResults() ? null : inputText)
+                .inputText(inputText)
+                .actionGroups(actionGroups)
                 .enableTrace(true)
                 .build();
     }
@@ -106,21 +125,24 @@ public class Proteus {
 
         return InvokeInlineAgentResponseHandler.builder()
                 .onEventStream(publisher -> publisher.subscribe(event -> event.accept(Visitor.builder()
-                        .onChunk(c -> outputText.append(c.bytes().asString(Charset.defaultCharset())))
+                        .onChunk(c -> outputText
+                                .append(c.bytes().asString(Charset.defaultCharset())))
                         .onTrace(t -> this.logger.info(t.toString()))
                         .onReturnControl(rc -> returnControls.add(rc))
                         .build())))
                 .build();
     }
 
-    private Collection<InvocationResultMember> processResultControl(final InlineAgentReturnControlPayload payload) {
+    private Collection<InvocationResultMember> processResultControl(final InlineAgentReturnControlPayload payload,
+            final ActionGroupProvisionerBean provisoner) {
 
         final Collection<InvocationResultMember> results = new ArrayList<>();
         for (final InvocationInputMember i : payload.invocationInputs()) {
             FunctionResult result;
             try {
-                result = this.processReturnCotrol(i.functionInvocationInput());
+                result = this.processReturnCotrol(i.functionInvocationInput(), provisoner);
             } catch (Exception e) {
+                this.logger.error(e.getMessage());
                 result = this.reportException(i.functionInvocationInput(), e);
             }
             InvocationResultMember.builder().functionResult(result).build();
@@ -139,18 +161,21 @@ public class Proteus {
                 .build();
     }
 
-    private FunctionResult processReturnCotrol(final FunctionInvocationInput input) throws Exception {
+    private FunctionResult processReturnCotrol(final FunctionInvocationInput input,
+            final ActionGroupProvisionerBean provisioner) throws Exception {
 
         final String actionGroup = input.actionGroup();
         final String function = input.function();
-        final Object tool = Optional.ofNullable(this.actionGroups.get(actionGroup)).orElseThrow(
-                () -> new NoSuchElementException("The specified actionGroup is not found. actionGroup=" + actionGroup));
+        final ActionGroupProperties tool = Optional.ofNullable(provisioner.getActionGroupBean(actionGroup)).orElseThrow(
+                () -> new NoSuchElementException(
+                        "The specified actionGroup is not found. actionGroup=" + actionGroup));
 
         final int numOfArgs = input.parameters().size();
-        final Method method = Arrays.stream(tool.getClass().getMethods())
+        final Method method = Arrays.stream(tool.getToolApiType().getMethods())
                 .filter(m -> m.getName().equals(function) && m.getParameterCount() == numOfArgs)
                 .findFirst().orElseThrow(() -> new NoSuchElementException(
-                        "The spcified function is not found. actionGroup=" + actionGroup + ", function=" + function));
+                        "The spcified function is not found. actionGroup=" + actionGroup
+                                + ", function=" + function));
 
         final Class<?>[] parameterTypes = method.getParameterTypes();
         final Object[] args = new Object[numOfArgs];
@@ -164,7 +189,8 @@ public class Proteus {
                 .actionGroup(actionGroup)
                 .function(function)
                 .responseBody(Collections.singletonMap("TEXT",
-                        ContentBody.builder().body(this.objectMapper.writeValueAsString(result)).build()))
+                        ContentBody.builder().body(this.objectMapper.writeValueAsString(result))
+                                .build()))
                 .build();
     }
 }
