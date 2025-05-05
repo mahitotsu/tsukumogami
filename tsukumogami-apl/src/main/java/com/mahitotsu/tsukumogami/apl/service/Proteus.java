@@ -176,8 +176,8 @@ public class Proteus {
 
         final Class<?>[] parameterTypes = method.getParameterTypes();
         final Object[] args = new Object[numOfArgs];
-        final FunctionParameter[] params = input.parameters().toArray(i -> new FunctionParameter[i]);
-        Arrays.sort(params, (p1, p2) -> p1.name().compareTo(p2.name()));
+        final FunctionParameter[] params = new FunctionParameter[numOfArgs];
+        input.parameters().stream().forEach(p -> params[tool.getParameterIndex(function, p.name())] = p);
 
         for (int i = 0; i < args.length; i++) {
             final FunctionParameter param = params[i];
@@ -190,7 +190,8 @@ public class Proteus {
                     value = pv;
                     break;
                 case "array":
-                    value = Arrays.stream(pv.substring(1, pv.length() - 1).split(",")).map(s -> s.trim())
+                    value = Arrays.stream(pv.substring(1, pv.length() - 1).split(","))
+                            .map(s -> s.trim())
                             .toArray(j -> new String[j]);
                     break;
                 default:

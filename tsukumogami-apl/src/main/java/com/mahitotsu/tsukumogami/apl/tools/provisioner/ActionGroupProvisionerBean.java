@@ -23,23 +23,7 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.ParameterType;
 public class ActionGroupProvisionerBean extends ActionGroupProperties implements ActionGroupProvisioner {
 
     public ActionGroupProvisionerBean(final Collection<ActionGroupProperties> actionGroupRegistry) {
-        super("ActionGroupProvisioner", """
-                エージェントが利用可能なツールをActionGroupとして利用できるように有効化する操作を提供します。
-                """, Arrays.asList(
-                new FunctionProperties("activateActionGroups", """
-                        指定された名称のActionGroupを利用できるように有効化します。
-                        指定された名称の中で有効化できないツールがあった場合、エラーが返ります。
-                        有効化に成功した場合は有効化されたActionGroupの名称の配列をJSON文字列で返します。
-                        """,
-                        Arrays.asList(new ParameterProperties("actionGroupNames", "ARRAY", true, """
-                                有効化するActionGroupの名前。複数指定可能です。
-                                """))),
-                new FunctionProperties("listAvailableActionGroups", """
-                        利用可能なツールの名称を含む配列を返します。返されたツールは有効化してエージェントから利用可能です。
-                        返される配列の要素はActionGroupの名称と説明です。
-                        利用可能なActionGroupがない場合は空の配列が返ります。
-                        """, null)),
-                ActionGroupProvisioner.class);
+        super(ActionGroupProvisioner.class);
 
         this.actionGroupRegistry.put(this.getName(), this);
         if (actionGroupRegistry != null) {
