@@ -38,7 +38,7 @@ import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeInlineAge
 import software.amazon.awssdk.services.bedrockagentruntime.model.InvokeInlineAgentResponseHandler.Visitor;
 
 @Service
-public class Proteus {
+public class AgentHostService {
 
     @Autowired
     private BedrockAgentRuntimeAsyncClient bedrockAgentRuntimeAsyncClient;

@@ -5,10 +5,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.mahitotsu.tsukumogami.apl.TestBase;
 
-public class ProteusTest extends TestBase {
+public class AgentHostServiceTest extends TestBase {
 
     @Autowired
-    private Proteus proteus;
+    private AgentHostService proteus;
 
     @Test
     public void test_WhatDayToday() {
