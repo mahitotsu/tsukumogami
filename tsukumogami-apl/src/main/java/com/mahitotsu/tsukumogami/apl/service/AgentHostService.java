@@ -92,6 +92,7 @@ public class AgentHostService {
 
         } while (returnControls.size() > 0);
 
+        this.logger.info("Result: " + resultReport.toString());
         return resultReport.toString();
     }
 
