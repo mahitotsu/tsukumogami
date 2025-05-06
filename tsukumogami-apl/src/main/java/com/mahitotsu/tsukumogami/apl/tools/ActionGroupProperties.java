@@ -3,7 +3,9 @@ package com.mahitotsu.tsukumogami.apl.tools;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import org.springframework.core.MethodParameter;
@@ -49,6 +51,7 @@ public class ActionGroupProperties {
                 pps.add(pp);
             }
             this.functions.add(new FunctionProperties(name, description, pps));
+            this.functionMap.put(name, m);
         }
     }
 
@@ -75,6 +78,7 @@ public class ActionGroupProperties {
     private final String description;
     private final Collection<FunctionProperties> functions;
     private final Class<?> toolApiType;
+    private final Map<String, Method> functionMap = new HashMap<>();
 
     public int getParameterIndex(final String functionName, final String parameterName) {
 
@@ -89,5 +93,9 @@ public class ActionGroupProperties {
         }
         throw new NoSuchElementException("The specified parameter is not found. functionName: " + functionName
                 + ", parameterName: " + parameterName);
+    }
+
+    public Method getMethod(final String functionName) {
+        return this.functionMap.get(functionName);
     }
 }

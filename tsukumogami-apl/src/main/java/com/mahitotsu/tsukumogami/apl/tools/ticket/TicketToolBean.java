@@ -1,13 +1,13 @@
 package com.mahitotsu.tsukumogami.apl.tools.ticket;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.mahitotsu.tsukumogami.apl.tools.ActionGroupProperties;
 
@@ -18,11 +18,13 @@ public class TicketToolBean extends ActionGroupProperties implements TicketTool 
         super(TicketTool.class);
     }
 
-    private final Map<UUID, Ticket> tickets = new HashMap<>();
+    @Autowired
+    private TicketRepository ticketRepository;
 
+    @Transactional
     public UUID createTicket(final String title, final LocalDate dueDate, final String description) {
 
-        final Ticket ticket = new Ticket();
+        final TicketEntity ticket = new TicketEntity();
         ticket.setId(UUID.randomUUID());
         ticket.setTitle(title);
         ticket.setDueDate(dueDate);
@@ -33,11 +35,11 @@ public class TicketToolBean extends ActionGroupProperties implements TicketTool 
             ticket.setAssignee(auth.getName());
         }
 
-        this.tickets.put(ticket.getId(), ticket);
-        return ticket.getId();
+        return this.ticketRepository.save(ticket).getId();
     }
 
-    public Ticket getTicket(final UUID ticketId) {
-        return this.tickets.get(ticketId);
+    @Transactional(readOnly = true)
+    public TicketEntity getTicket(final UUID ticketId) {
+        return this.ticketRepository.findById(ticketId).orElse(null);
     }
 }
