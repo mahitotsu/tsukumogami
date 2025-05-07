@@ -48,7 +48,7 @@ public class WebSearchToolBean extends ActionGroupProperties implements WebSearc
         messages.add(Map.of("role", "user", "content", request));
 
         final Map<String, Object> body = new HashMap<>();
-        body.put("model", "sonar-pro");
+        body.put("model", "sonar");
         if (domains.length > 0) {
             body.put("requestsearch_domain_filter", String.join(",", domains));
         }
