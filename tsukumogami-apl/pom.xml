@@ -29,6 +29,17 @@
             <artifactId>bedrockagentruntime</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>${graaljs.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>js</artifactId>
+            <version>${graaljs.version}</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>sso</artifactId>
             <scope>runtime</scope>
@@ -86,6 +97,7 @@
     </dependencyManagement>
     <properties>
         <java.version>23</java.version>
+        <graaljs.version>24.2.1</graaljs.version>
     </properties>
 
     <build>

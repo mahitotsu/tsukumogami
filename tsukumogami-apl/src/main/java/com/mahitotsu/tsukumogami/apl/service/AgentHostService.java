@@ -88,7 +88,7 @@ public class AgentHostService {
 
                         注意事項
                         * 作業指示の完遂のために必要なツールはProvisionerを通じて発見し、有効化して、利用してください。
-                        * 日付を扱う場合、必ず計算の起点となる現在日時はツールを利用して最新の値を取得してください。
+                        * 今日、明日、昨日、など現在日時を起点にした日付はツールを利用して取得してください。
                         """)
                 .sessionId(sessionId)
                 .inputText(sessionState == null ? inputText : null)

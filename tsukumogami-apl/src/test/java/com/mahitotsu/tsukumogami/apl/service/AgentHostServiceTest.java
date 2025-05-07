@@ -34,6 +34,7 @@ public class AgentHostServiceTest extends TestBase {
                 明日、本格的なインドカレーを作成したいと考えています。
                 それまでに必要な食材を買いそろえる必要があります。
                 このことを忘れずに実行するために今日期限のチケットを起票しておいてください。
+                チケットには必要な食材のリストを調べた結果も記載しておいてください。
                 最終行には起票したチケットのIDのみを記載してください。
                  """;
         final String resultReport = this.proteus.execute(workOrder);
