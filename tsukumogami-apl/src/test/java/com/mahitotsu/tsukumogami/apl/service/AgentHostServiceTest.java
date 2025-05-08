@@ -31,7 +31,7 @@ public class AgentHostServiceTest extends TestBase {
     public void test_CreateTicket() {
 
         final String workOrder = """
-                明日、本格的なインドカレーを作成したいと考えています。
+                来週の金曜日に、本格的なインドカレーを作成したいと考えています。
                 それまでに必要な食材を買いそろえる必要があります。
                 このことを忘れずに実行するために今日期限のチケットを起票しておいてください。
                 チケットには必要な食材のリストを調べた結果も記載しておいてください。
