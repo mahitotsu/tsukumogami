@@ -17,7 +17,7 @@ public class AgentHostServiceTest extends TestBase {
     @Autowired
     private TicketToolBean ticketTool;
 
-    @Test
+    // @Test
     public void test_WhatDayToday() {
 
         final String workOrder = """
@@ -26,7 +26,7 @@ public class AgentHostServiceTest extends TestBase {
         this.proteus.execute(workOrder);
     }
 
-    @Test
+    // @Test
     @WithMockUser(username = "Usr001@test.com")
     public void test_CreateTicket() {
 

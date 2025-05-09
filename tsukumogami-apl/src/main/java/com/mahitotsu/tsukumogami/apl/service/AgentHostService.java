@@ -84,7 +84,11 @@ public class AgentHostService {
         return InvokeInlineAgentRequest.builder()
                 .foundationModel("apac.anthropic.claude-3-5-sonnet-20241022-v2:0")
                 .instruction("""
-                        あなたは作業指示の内容を慎重に理解して完遂することが出来るエージェントです。
+                        あなたは以下の手順にしたがってユーザーの入力に対する応答を作成します。
+                        * ユーザーが要求する内容を理解します。
+                        * 要求された内容を達成するための作業項目を定義し、作業の実行計画を作成します。
+                        * 作業項目ごとに必要となるツールを選定します。
+                        * 選定したツールを利用しながら作業を実行し、最終的な応答を作成します。
 
                         注意事項
                         * 作業指示の完遂のために必要なツールはProvisionerを通じて発見し、有効化して、利用してください。
